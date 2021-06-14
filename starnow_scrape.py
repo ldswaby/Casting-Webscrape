@@ -14,13 +14,6 @@ import argparse
 import sys
 import subprocess
 
-webpage="https://www.starnow.co.uk/casting/1123833/applicants"
-usn_field="ctl00$cphMain$signinForm$email"
-usn='casting@treepetts.co.uk'
-pwd_field="ctl00$cphMain$signinForm$password"
-pwd='kitchen69'
-outfile='GOAL NATIONAL TEAM FOOTBALL FANS.xlsx'
-
 ## Functions ##
 def main(webpage="https://www.starnow.co.uk/casting/1123833/applicants",
          pages=4,
