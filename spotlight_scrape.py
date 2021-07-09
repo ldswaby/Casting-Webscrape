@@ -16,18 +16,22 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 ## Functions ##
+
 def main(webpage="https://www.spotlight.com/shortlists/2737534",
          usn_field="Username",
          usn='TreePetts',
          pwd_field="Password",
          pwd='kitchen150%',
-         outfile='Spotlight_spreadsheet.xlsx'):
+         outfile='Spotlight_spreadsheet.xlsx',
+         open=True):
     """
     Function that scrapes starnow site for names etc
     """
+    if not outfile.endswith('.xlsx'):
+        outfile += '.xlsx'
 
     driver = webdriver.Chrome(executable_path='./chromedriver')
 
@@ -48,11 +52,29 @@ def main(webpage="https://www.spotlight.com/shortlists/2737534",
         time.sleep(5)
         print("Page is ready!")
     except TimeoutException:
-        print("Loading took too much time!")
+        sys.exit("Loading took too much time!")
 
     txt = driver.page_source
 
-    driver.close()
+    # RETRIEVE HTML FROM ALL PAGES
+    while driver.find_elements_by_class_name("c-pagination-control__arrow-icon.icon-chevronright"):
+
+        driver.find_element_by_class_name(
+            "c-pagination-control__arrow-icon.icon-chevronright").click()
+
+        try:
+            # wait to load
+            myElem = WebDriverWait(driver, delay).until(
+                EC.presence_of_element_located((By.ID, "Radio-Signal")))
+            time.sleep(3)
+            print("Page is ready!")
+        except TimeoutException:
+            print("Loading took too much time!")
+
+        # append source to txt
+        txt += driver.page_source
+
+    driver.close()  # close driver
 
     pattern = r'alt="(.+?)"[\S\n\t\v ]+?"c-agency__card-agency-name">(.+?)<' \
               r'[\S\n\t\v ]+?tel\:\/\/(.+?)"[\S\n\t\v ]+?"mailto:(.+?)"'
@@ -63,7 +85,7 @@ def main(webpage="https://www.spotlight.com/shortlists/2737534",
              match.group(3).strip(), match.group(4).strip())
             for match in regex.finditer(txt)]
 
-    print('Saving dataframe...')
+    print(f'Saving dataframe to {outfile}...')
 
     # Building and saving dataframe
     out = pd.DataFrame(rows, columns=['NAME', 'AGENT', 'CONTACT NUMBER', 'EMAIL'])
@@ -71,6 +93,10 @@ def main(webpage="https://www.spotlight.com/shortlists/2737534",
     out.to_excel(outfile, index=None, header=True)
 
     print('Done!')
+
+    print(f'\n\nopen: {open}\n\n')
+    if open:
+        subprocess.call(['open', outfile])  # Mac
 
     return 0
 
@@ -94,8 +120,8 @@ if __name__ == '__main__':
                         help='Password')
     parser.add_argument('-o', default='Spotlight_spreadsheet.xlsx',
                         dest='outfile', help='Out file path')
-    parser.add_argument('-op', default=True, type=bool,
-                        dest='open', help='Open the file on completion?')
+    parser.add_argument('--open', dest='open', action='store_true', help='Open the file on completion?')
+    parser.set_defaults(open=False)
 
     args = parser.parse_args()
 
@@ -105,9 +131,7 @@ if __name__ == '__main__':
                   usn=args.usn,
                   pwd_field=args.pwd_field,
                   pwd=args.pwd,
-                  outfile=args.outfile)
-
-    if args.open:
-        subprocess.call(['open', args.outfile])  # Mac
+                  outfile=args.outfile,
+                  open=args.open)
 
     sys.exit(status)
