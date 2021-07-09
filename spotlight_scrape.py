@@ -94,8 +94,8 @@ def main(webpage="https://www.spotlight.com/shortlists/2737534",
 
     print('Done!')
 
-    print(f'\n\nopen: {open}\n\n')
     if open:
+        print('Opening...')
         subprocess.call(['open', outfile])  # Mac
 
     return 0
