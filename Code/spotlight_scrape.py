@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Scraping Starnow webpage for names, nationalities etc."""
+"""Scraping Spotlight shortlist for names, nationalities etc."""
 
 __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'
@@ -26,7 +26,7 @@ def parse_args():
     """
     Parses arguments from the command line.
     """
-    parser = argparse.ArgumentParser(description="Script for scraping Spotlight webpage for actor/actress details "
+    parser = argparse.ArgumentParser(description="Script for scraping Spotlight shortlist for actor/actress details "
                                                  "(names, agents, contact numbers, and email addresses) and loading "
                                                  "them into an Excel spreadsheet.")
     parser.add_argument('-uf', default="Username",
@@ -44,7 +44,7 @@ def parse_args():
 
     usn = input("Spotlight Username: ")
     pwd = pwinput("Spotlight Password: ")
-    webpage = input("Spotlight URL: ")
+    webpage = input("Spotlight shortlist URL: ")
     outfile = input("Desired file name for output spreadsheet: ")
 
     return webpage, args.usn_field, usn, args.pwd_field, pwd, outfile, args.open

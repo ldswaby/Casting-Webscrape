@@ -66,6 +66,8 @@ def main(data, from_address, password, subject, text, all):
     session = smtplib.SMTP("smtp.ionos.de", 587)
     session.login(from_address, password)
 
+    print('\nLogin Successful. Sending mail now...'.upper())
+
     for _, row in df.iterrows():
 
         name = row.NAME.split()[0].capitalize()
@@ -82,6 +84,7 @@ def main(data, from_address, password, subject, text, all):
         session.sendmail(from_address, to_address, msg.as_string())  # send email
 
     session.quit()
+    print('\nDone!')
 
     return
 
