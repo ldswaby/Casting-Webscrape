@@ -62,6 +62,10 @@ def main(data, from_address, password, subject, text, all):
     with open(text) as email:
         msg_template = email.read()
 
+    # Login to email account
+    session = smtplib.SMTP("smtp.ionos.de", 587)
+    session.login(from_address, password)
+
     for _, row in df.iterrows():
 
         name = row.NAME.split()[0].capitalize()
@@ -72,13 +76,12 @@ def main(data, from_address, password, subject, text, all):
         content = msg_template.replace('_', name)
         msg = MIMEText(content)
         msg['Subject'] = subject
-        msg['From'] = from_address   # me == the sender's email address
-        msg['To'] = to_address  # you == the recipient's email address
+        msg['From'] = from_address   # the sender's email address
+        msg['To'] = to_address  # the recipient's email address
 
-        session = smtplib.SMTP("smtp.ionos.de", 587)
-        session.login(from_address, password)
-        session.sendmail(from_address, to_address, msg.as_string())
-        session.quit()
+        session.sendmail(from_address, to_address, msg.as_string())  # send email
+
+    session.quit()
 
     return
 
