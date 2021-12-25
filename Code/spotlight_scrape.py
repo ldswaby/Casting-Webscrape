@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-"""Scraping Spotlight shortlist for names, nationalities etc."""
+"""Script for scraping Spotlight shortlist for actor/actress details (names, agents, contact numbers, and email
+addresses) and loading them into an Excel spreadsheet."""
 
 __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'

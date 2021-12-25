@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Sends out template email to actors/actresses in spreadsheet."""
+"""Emails a custom message to a list of actors/actresses in an Excel spreadsheet."""
 
 __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'
@@ -22,14 +22,16 @@ def parse_args():
                                                  "in an Excel spreadsheet (output by spotlight_scrape.py).")
 
     parser.add_argument('-t', default="../Data/email.txt", dest='text',
-                        help='The path to the .txt file containing the email template. Note that this script assumes '
-                             'any underscores in the text are placeholders for the actor/actresses name (found in the '
-                             'first field of the spreadsheet), and will accordingly replace them.')
+                        help='The path to the .txt file containing the email template; this must be in the ../Email/ '
+                             'directory. Note that this script assumes any underscores in the text are placeholders '
+                             'for the actor/actresses name (found in the first field of the spreadsheet), and will '
+                             'accordingly replace them.')
     parser.add_argument('-d', default="../Data/", dest='data',
                         help="Path to data excel spreadsheet. At the very least, this should contain the fields: "
                              "'NAME' (actor name), 'EMAIL' (email address), and 'CONTACT?' (should this person be "
                              "emailed? - note that only people for whom this field is completely blank will be "
-                             "ignored; anybody with any characters in this field will be contacted).")
+                             "ignored; anybody with any characters in this field will be contacted. This field may be "
+                             "omitted if the --all flag is used).")
     parser.add_argument('--all', dest='all', action='store_true',
                         help="Include this flag if you simply want to contact everybody listed in the spreadsheet. "
                              "This essentially overrides the function of the 'CONTACT?' field. If this flag is "
@@ -53,6 +55,10 @@ def main(data, from_address, password, subject, text, all):
         data = '../Data/' + data
     if not data.endswith('.xlsx'):
         data += '.xlsx'
+    if not text.startswith('../Email/'):
+        text = '../Email/' + text
+    if not text.endswith('.txt'):
+        text += '.txt'
 
     df = pd.read_excel(data, keep_default_na=False)
     if not all:
@@ -70,12 +76,16 @@ def main(data, from_address, password, subject, text, all):
 
     for _, row in df.iterrows():
 
-        name = row.NAME.split()[0].capitalize()
+        # Extract and format name
+        names = [x.capitalize() for x in row.NAME.split()]
+        name1 = names[0]
+        name2 = ' '.join(names[1:])
         to_address = row.EMAIL
-        print(f'Mailing {to_address} regarding {name}...')
+
+        print(f'Mailing {to_address} regarding {name1} {name2}...')
 
         # Insert name into email message
-        content = msg_template.replace('_', name)
+        content = msg_template.replace('$1', name1).replace('$2', name2)
         msg = MIMEText(content)
         msg['Subject'] = subject
         msg['From'] = from_address   # the sender's email address
