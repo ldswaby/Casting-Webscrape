@@ -12,8 +12,13 @@ from pwinput import pwinput
 import smtplib
 from email.mime.text import MIMEText
 
-## Functions ##
+## Variables ##
+providers = {"gmail": "smtp.gmail.com",
+             "hotmail": "smtp.live.com",
+             "ionos": "smtp.ionos.de",
+             "icloud": "smtp.mail.me.com"}
 
+## Functions ##
 def parse_args():
     """
     Parses arguments from the command line
@@ -21,12 +26,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Script for sending a template email to all (or a subset of) actors "
                                                  "in an Excel spreadsheet (output by spotlight_scrape.py).")
 
-    parser.add_argument('-t', default="../Data/email.txt", dest='text',
+    parser.add_argument('-p', dest='provider', default="smtp.ionos.de",
+                        help=f"Email service provider. Choose one of: {', '.join(providers.keys())}.")
+    parser.add_argument('-t', required=True, dest='text',
                         help='The path to the .txt file containing the email template; this must be in the ../Email/ '
                              'directory. Note that this script assumes any underscores in the text are placeholders '
                              'for the actor/actresses name (found in the first field of the spreadsheet), and will '
                              'accordingly replace them.')
-    parser.add_argument('-d', default="../Data/", dest='data',
+    parser.add_argument('-d', required=True, dest='data',
                         help="Path to data excel spreadsheet. At the very least, this should contain the fields: "
                              "'NAME' (actor name), 'EMAIL' (email address), and 'CONTACT?' (should this person be "
                              "emailed? - note that only people for whom this field is completely blank will be "
@@ -44,9 +51,9 @@ def parse_args():
     usn = input("Sender Email Address: ")
     pwd = pwinput("Account Password: ")
 
-    return args.data, usn, pwd, subject, args.text, args.all
+    return args.provider, args.data, usn, pwd, subject, args.text, args.all
 
-def main(data, from_address, password, subject, text, all):
+def main(provider, data, from_address, password, subject, text, all):
     """
     Function that sedns email to a load of addresses, replacing '-' with their names
     """
@@ -69,7 +76,7 @@ def main(data, from_address, password, subject, text, all):
         msg_template = email.read()
 
     # Login to email account
-    session = smtplib.SMTP("smtp.ionos.de", 587)
+    session = smtplib.SMTP(providers[provider], 587)
     session.login(from_address, password)
 
     print('\nLogin Successful. Sending mail now...'.upper())
@@ -78,14 +85,14 @@ def main(data, from_address, password, subject, text, all):
 
         # Extract and format name
         names = [x.capitalize() for x in row.NAME.split()]
-        name1 = names[0]
-        name2 = ' '.join(names[1:])
+        firstname = names[0]
+        surname = ' '.join(names[1:])
         to_address = row.EMAIL
 
-        print(f'Mailing {to_address} regarding {name1} {name2}...')
+        print(f'Mailing {to_address} regarding {firstname} {surname}...')
 
         # Insert name into email message
-        content = msg_template.replace('$1', name1).replace('$2', name2)
+        content = msg_template.replace('$1', firstname).replace('$2', surname)
         msg = MIMEText(content)
         msg['Subject'] = subject
         msg['From'] = from_address   # the sender's email address
