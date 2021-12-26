@@ -26,7 +26,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Script for sending a template email to all (or a subset of) actors "
                                                  "in an Excel spreadsheet (output by spotlight_scrape.py).")
 
-    parser.add_argument('-p', dest='provider', default="smtp.ionos.de",
+    parser.add_argument('-p', dest='provider', default="smtp.ionos.de", choices=list(providers.keys()),
                         help=f"Email service provider. Choose one of: {', '.join(providers.keys())}.")
     parser.add_argument('-t', required=True, dest='text',
                         help='The path to the .txt file containing the email template; this must be in the ../Email/ '
