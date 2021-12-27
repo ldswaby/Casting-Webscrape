@@ -46,7 +46,7 @@ def parse_args():
     usn = input("Spotlight Username: ")
     pwd = pwinput("Spotlight Password: ")
     webpage = input("Spotlight shortlist URL: ")
-    outfile = input("Desired file name for output spreadsheet: ")
+    outfile = input("Desired output file name: ")
 
     return webpage, args.usn_field, usn, args.pwd_field, pwd, outfile, args.open
 
@@ -63,6 +63,7 @@ def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
     s = Service('./chromedriver')
     driver = webdriver.Chrome(service=s)
 
+    print('\nLoading webpage...')
     driver.get(webpage)  # load webpage
     driver.implicitly_wait(3)
 
@@ -82,6 +83,7 @@ def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
         driver.close()
         sys.exit("Login Failed. Please check username and password and/or internet connection.")
 
+    print('Scraping data...')
     txt = driver.page_source
 
     # RETRIEVE HTML FROM ALL PAGES
@@ -110,15 +112,15 @@ def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
              match.group(3).strip(), match.group(4).strip())
             for match in regex.finditer(txt)]
 
-    print(f'Saving dataframe to {outfile}...')
+    out = pd.DataFrame(rows, columns=['NAME', 'AGENT', 'CONTACT NUMBER', 'EMAIL'])  # Building dataframe
 
-    # Building and saving dataframe
-    out = pd.DataFrame(rows, columns=['NAME', 'AGENT', 'CONTACT NUMBER', 'EMAIL'])
-
+    # Format cols
     out['CONTACT NUMBER'] = out['CONTACT NUMBER'].astype("str")
     out['CONTACT NUMBER'] = out['CONTACT NUMBER'].str.replace(r'\D+', '', regex=True)  # keep numericals only
+    out['NAME'] = out['NAME'].str.title()
     out['CONTACT?'] = None
 
+    print(f'Saving data to {outfile}...')
     out.to_excel(outfile, index=None, header=True)
 
     print('Done!')

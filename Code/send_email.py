@@ -26,13 +26,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Script for sending a template email to all (or a subset of) actors "
                                                  "in an Excel spreadsheet (output by spotlight_scrape.py).")
 
-    parser.add_argument('-p', dest='provider', default="smtp.ionos.de", choices=list(providers.keys()),
+    parser.add_argument('-p', dest='provider', default="ionos", choices=list(providers.keys()),
                         help=f"Email service provider. Choose one of: {', '.join(providers.keys())}.")
     parser.add_argument('-t', required=True, dest='text',
                         help='The path to the .txt file containing the email template; this must be in the ../Email/ '
-                             'directory. Note that this script assumes any underscores in the text are placeholders '
-                             'for the actor/actresses name (found in the first field of the spreadsheet), and will '
-                             'accordingly replace them.')
+                             'directory. Note that this script assumes $1 and $2 are placeholders for actor/actress '
+                             'first name and surname respectively (found in the first field of the spreadsheet), and '
+                             'will accordingly replace them.')
     parser.add_argument('-d', required=True, dest='data',
                         help="Path to data excel spreadsheet. At the very least, this should contain the fields: "
                              "'NAME' (actor name), 'EMAIL' (email address), and 'CONTACT?' (should this person be "
@@ -84,7 +84,7 @@ def main(provider, data, from_address, password, subject, text, all):
     for _, row in df.iterrows():
 
         # Extract and format name
-        names = [x.capitalize() for x in row.NAME.split()]
+        names = row.NAME.split()
         firstname = names[0]
         surname = ' '.join(names[1:])
         to_address = row.EMAIL
