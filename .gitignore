@@ -1,2 +1,5 @@
 Data/
 chromedriver
+Email/
+.DS_Store
+.idea/
