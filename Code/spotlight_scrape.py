@@ -14,6 +14,8 @@ import argparse
 import sys
 import time
 from pwinput import pwinput
+import tkinter as tk
+from tkinter import filedialog
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -43,12 +45,22 @@ def parse_args():
 
     args = parser.parse_args()
 
+    # More args
+    print('\nPLEASE FILL THE FOLLOWING:\n')
     usn = input("Spotlight Username: ")
     pwd = pwinput("Spotlight Password: ")
     webpage = input("Spotlight shortlist URL: ")
-    outfile = input("Desired output file name: ")
 
-    return webpage, args.usn_field, usn, args.pwd_field, pwd, outfile, args.open
+    input('Hit ENTER to select desired output folder: ')
+    root = tk.Tk()  # Initialise dialog box
+    root.withdraw()
+    outdir = filedialog.askdirectory()  # fetch directory path
+    root.destroy()  # delete dialog window
+
+    outfile = input("Desired output file name: ")
+    outpath = outdir + outfile if outdir.endswith('/') else outdir + '/' + outfile
+
+    return webpage, args.usn_field, usn, args.pwd_field, pwd, outpath, args.open
 
 def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
     """
@@ -57,8 +69,8 @@ def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
     # Format inputs
     if not outfile.endswith('.xlsx'):
         outfile += '.xlsx'
-    if not outfile.startswith('../Data/'):
-        outfile = '../Data/' + outfile
+    #if not outfile.startswith('../Data/'):
+    #    outfile = '../Data/' + outfile
 
     s = Service('./chromedriver')
     driver = webdriver.Chrome(service=s)

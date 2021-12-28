@@ -11,6 +11,9 @@ import argparse
 from pwinput import pwinput
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import tkinter as tk
+from tkinter import filedialog
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
@@ -28,17 +31,6 @@ def parse_args():
 
     parser.add_argument('-p', dest='provider', default="ionos", choices=list(providers.keys()),
                         help=f"Email service provider. Choose one of: {', '.join(providers.keys())}.")
-    parser.add_argument('-t', required=True, dest='text',
-                        help='The path to the .txt file containing the email template; this must be in the ../Email/ '
-                             'directory. Note that this script assumes $1 and $2 are placeholders for actor/actress '
-                             'first name and surname respectively (found in the first field of the spreadsheet), and '
-                             'will accordingly replace them.')
-    parser.add_argument('-d', required=True, dest='data',
-                        help="Path to data excel spreadsheet. At the very least, this should contain the fields: "
-                             "'NAME' (actor name), 'EMAIL' (email address), and 'CONTACT?' (should this person be "
-                             "emailed? - note that only people for whom this field is completely blank will be "
-                             "ignored; anybody with any characters in this field will be contacted. This field may be "
-                             "omitted if the --all flag is used).")
     parser.add_argument('--all', dest='all', action='store_true',
                         help="Include this flag if you simply want to contact everybody listed in the spreadsheet. "
                              "This essentially overrides the function of the 'CONTACT?' field. If this flag is "
@@ -47,25 +39,43 @@ def parse_args():
 
     args = parser.parse_args()
 
+    # Parse paths to input files
+    print('\nPLEASE FILL THE FOLLOWING:\n')
+
+    excel_prompt = 'Press ENTER to find and select Excel spreadsheet: '
+    input(excel_prompt)
+    root = tk.Tk()  # Initialise dialog box
+    root.withdraw()
+    data = filedialog.askopenfilename()
+    print(' '*len(excel_prompt) + '\033[A' + data)
+
+    text_prompt = 'Press ENTER to find and select email template .txt file: '
+    input(text_prompt)
+    text = filedialog.askopenfilename()
+    print(' '*len(text_prompt) + '\033[A' + text)
+
+    root.destroy()  # remove root window
+
+    # Parse email info
     subject = input("Email Subject: ")
-    usn = input("Sender Email Address: ")
+    usn = input(f"Sender {args.provider.title()} Email Address: ")
     pwd = pwinput("Account Password: ")
 
-    return args.provider, args.data, usn, pwd, subject, args.text, args.all
+    return args.provider, data, usn, pwd, subject, text, args.all
 
 def main(provider, data, from_address, password, subject, text, all):
     """
     Function that sedns email to a load of addresses, replacing '-' with their names
     """
     # Format inputs
-    if not data.startswith('../Data/'):
-        data = '../Data/' + data
-    if not data.endswith('.xlsx'):
-        data += '.xlsx'
-    if not text.startswith('../Email/'):
-        text = '../Email/' + text
-    if not text.endswith('.txt'):
-        text += '.txt'
+    #if not data.startswith('../Data/'):
+    #    data = '../Data/' + data
+    #if not data.endswith('.xlsx'):
+    #    data += '.xlsx'
+    #if not text.startswith('../Email/'):
+    #    text = '../Email/' + text
+    #if not text.endswith('.txt'):
+    #    text += '.txt'
 
     df = pd.read_excel(data, keep_default_na=False)
     if not all:
@@ -94,9 +104,13 @@ def main(provider, data, from_address, password, subject, text, all):
         # Insert name into email message
         content = msg_template.replace('$1', firstname).replace('$2', surname)
         msg = MIMEText(content)
+        #msg = MIMEMultipart()
         msg['Subject'] = subject
         msg['From'] = from_address   # the sender's email address
         msg['To'] = to_address  # the recipient's email address
+
+        # Add body to email
+        #msg.attach(MIMEText(content, "plain"))
 
         session.sendmail(from_address, to_address, msg.as_string())  # send email
 
