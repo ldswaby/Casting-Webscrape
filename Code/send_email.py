@@ -6,6 +6,8 @@ __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'
 
 ## Imports ##
+import re
+import markdown
 import pandas as pd
 import argparse
 from pwinput import pwinput
@@ -14,6 +16,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import tkinter as tk
 from tkinter import filedialog
+
+
+# TODO: add email attachments signature:
+#  https://realpython.com/python-send-email/#sending-fancy-emails
+# bold = bold{...}
+# italics = italics{...}
+#
+# show example template email before sending
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
@@ -63,20 +73,42 @@ def parse_args():
 
     return args.provider, data, usn, pwd, subject, text, args.all
 
+def convert_to_html(text):
+    """
+
+    """
+    out = text.replace('\n', '<br>')  # convert linebreaks
+    out = markdown.markdown(out)  # bold and italics
+
+    # Convert colours: [green]{...} -> <span style="color: green">...</span>
+    for lefttag in re.findall(r'\[\w+\]\{', out):
+        col = re.search(r'\[(\w+)\]', lefttag).group(1)
+        lefttag_html = f'<span style="color: {col}">'
+        out = out.replace(lefttag, lefttag_html)
+
+    out = out.replace('}', '</span>')
+
+    return out
+
+def convert_to_plain(text):
+    """
+
+    """
+    out = text.replace('*', '')
+
+    # Convert colours: [green]{...} -> ...
+    for lefttag in re.findall(r'\[\w+\]\{', out):
+        out = out.replace(lefttag, '')
+
+    out = out.replace('}', '')
+
+    return out
+
 def main(provider, data, from_address, password, subject, text, all):
     """
     Function that sedns email to a load of addresses, replacing '-' with their names
     """
-    # Format inputs
-    #if not data.startswith('../Data/'):
-    #    data = '../Data/' + data
-    #if not data.endswith('.xlsx'):
-    #    data += '.xlsx'
-    #if not text.startswith('../Email/'):
-    #    text = '../Email/' + text
-    #if not text.endswith('.txt'):
-    #    text += '.txt'
-
+    # Read data
     df = pd.read_excel(data, keep_default_na=False)
     if not all:
         df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
@@ -103,14 +135,20 @@ def main(provider, data, from_address, password, subject, text, all):
 
         # Insert name into email message
         content = msg_template.replace('$1', firstname).replace('$2', surname)
-        msg = MIMEText(content)
-        #msg = MIMEMultipart()
+        #msg = MIMEText(content)
+        msg = MIMEMultipart("alternative")
         msg['Subject'] = subject
         msg['From'] = from_address   # the sender's email address
         msg['To'] = to_address  # the recipient's email address
 
         # Add body to email
-        #msg.attach(MIMEText(content, "plain"))
+        part1 = MIMEText(convert_to_plain(content), "plain")
+        part2 = MIMEText(convert_to_html(content), "html")
+
+        # Add HTML/plain-text parts to MIMEMultipart message
+        # The email client will try to render the last part first
+        msg.attach(part1)
+        msg.attach(part2)
 
         session.sendmail(from_address, to_address, msg.as_string())  # send email
 
