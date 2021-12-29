@@ -8,6 +8,8 @@ __version__ = '0.0.1'
 ## Imports ##
 import re
 import os
+import sys
+
 import markdown
 import pandas as pd
 import argparse
@@ -23,6 +25,7 @@ from tkinter import filedialog
 
 # TODO: add email attachments signature:
 #  https://realpython.com/python-send-email/#sending-fancy-emails
+#  https://stackoverflow.com/questions/10496902/pgp-signing-multipart-e-mails-with-python
 # Add footer to email - would you like to add signature? Y/N  https://stackoverflow.com/questions/60316249/how-to-include-inline-images-in-e-mail-signature-when-sent-out-with-python
 # parse boolean of whether to attach file(s)
 # if yes then askopenfilenames() to select all - need list (if none then empty list)
@@ -99,7 +102,10 @@ def parse_args():
     usn = input(f"Sender {args.provider.title()} Email Address: ")
     pwd = pwinput("Account Password: ")
 
-    return args.provider, data, usn, pwd, subject, text, docs_to_add, args.all
+    # check if user wants to preview message before sending
+    preview = yes_no("Would you like to preview the email before sending? ('y'/'n'): ")
+
+    return args.provider, data, usn, pwd, subject, text, docs_to_add, args.all, preview
 
 def convert_to_html(text):
     """
@@ -132,7 +138,62 @@ def convert_to_plain(text):
 
     return out
 
-def main(provider, data, from_address, password, subject, text, docs_to_add, all):
+def attach_documents(msg, doc_list):
+    """
+
+    """
+    for doc in doc_list:
+
+        # Open file in binary mode
+        with open(doc, "rb") as attachment:
+            # Add file as application/octet-stream
+            # Email client can usually download this automatically as attachment
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+
+        # Encode file in ASCII characters to send by email
+        encoders.encode_base64(part)
+
+        # Add header as key/value pair to attachment part
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename= {os.path.basename(doc)}",
+        )
+
+        # Add attachment to message and convert message to string
+        msg.attach(part)
+
+    return msg
+
+def send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add):
+    """
+    Send mail
+    """
+    # Insert name into email message
+    content = msg_template.replace('$1', firstname).replace('$2', surname)
+    msg = MIMEMultipart("alternative")
+    msg['Subject'] = subject
+    msg['From'] = from_address  # the sender's email address
+    msg['To'] = to_address  # the recipient's email address
+
+    # Add body to email
+    part1 = MIMEText(convert_to_plain(content), "plain")
+    part2 = MIMEText(convert_to_html(content), "html")
+
+    # Add HTML/plain-text parts to MIMEMultipart message
+    # The email client will try to render the last part first
+    msg.attach(part1)
+    msg.attach(part2)
+
+    # Attach documents
+    if docs_to_add:
+        msg = attach_documents(msg, docs_to_add)
+
+    session.sendmail(from_address, to_address, msg.as_string())  # send email
+
+    return
+
+def main(provider, data, from_address, password, subject, text, docs_to_add, all, preview):
     """
     Function that sedns email to a load of addresses, replacing '-' with their names
     """
@@ -149,7 +210,21 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, all
     session = smtplib.SMTP(providers[provider], 587)
     session.login(from_address, password)
 
-    print('\nLogin Successful. Sending mail now...'.upper())
+    print('\nLogin Successful.'.upper())
+
+    # Check user is ok with email format
+    if preview:
+        test_name1 = 'Firstname'
+        test_name2 = 'Surname'
+        send_mail(session, msg_template, subject, from_address, from_address, test_name1, test_name2, docs_to_add)
+        email_ok_prompt = f"A formatted email has been sent to {from_address} for you to inspect. " \
+                          f"Are you happy to proceed with contacting agencies? ('y'/'n'): "
+        email_ok = yes_no(email_ok_prompt)
+
+        if email_ok:
+            pass
+        else:
+            sys.exit('Program terminated')
 
     for _, row in df.iterrows():
 
@@ -160,7 +235,8 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, all
         to_address = row.EMAIL
 
         print(f'Mailing {to_address} regarding {firstname} {surname}...')
-
+        send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add)
+        """
         # Insert name into email message
         content = msg_template.replace('$1', firstname).replace('$2', surname)
         #msg = MIMEText(content)
@@ -179,29 +255,11 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, all
         msg.attach(part2)
 
         # Attach documents
-        for doc in docs_to_add:
-
-            # Open PDF file in binary mode
-            with open(doc, "rb") as attachment:
-                # Add file as application/octet-stream
-                # Email client can usually download this automatically as attachment
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
-
-            # Encode file in ASCII characters to send by email
-            encoders.encode_base64(part)
-
-            # Add header as key/value pair to attachment part
-            part.add_header(
-                "Content-Disposition",
-                f"attachment; filename= {os.path.basename(doc)}",
-            )
-
-            # Add attachment to message and convert message to string
-            msg.attach(part)
+        if docs_to_add:
+            msg = attach_documents(msg, docs_to_add)
 
         session.sendmail(from_address, to_address, msg.as_string())  # send email
-
+        """
     session.quit()
     print('\nDone!')
 
