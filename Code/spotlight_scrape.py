@@ -51,14 +51,20 @@ def parse_args():
     pwd = pwinput("Spotlight Password: ")
     webpage = input("Spotlight shortlist URL: ")
 
-    input('Hit ENTER to select desired output folder: ')
+    outdir_prompt = 'Hit ENTER to select desired output folder: '
+    input(outdir_prompt)
     root = tk.Tk()  # Initialise dialog box
     root.withdraw()
     outdir = filedialog.askdirectory()  # fetch directory path
+
+    if not outdir.endswith('/'):
+        outdir += '/'
+
     root.destroy()  # delete dialog window
+    print(' ' * len(outdir_prompt) + '\033[A' + outdir)  # print at end of previous line
 
     outfile = input("Desired output file name: ")
-    outpath = outdir + outfile if outdir.endswith('/') else outdir + '/' + outfile
+    outpath = outdir + outfile
 
     return webpage, args.usn_field, usn, args.pwd_field, pwd, outpath, args.open
 
