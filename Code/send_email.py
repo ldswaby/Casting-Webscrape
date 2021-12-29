@@ -40,8 +40,10 @@ providers = {"gmail": "smtp.gmail.com",
              "ionos": "smtp.ionos.de",
              "icloud": "smtp.mail.me.com"}
 
-## Functions ##
+with open('signature.txt') as sig:
+    signature = sig.read()
 
+## Functions ##
 def yes_no(prompt):
     x = input(prompt).lower()
 
@@ -75,12 +77,12 @@ def parse_args():
     root = tk.Tk()  # Initialise dialog box
     root.withdraw()
     data = filedialog.askopenfilename()
-    print(' '*len(excel_prompt) + '\033[A' + data)
+    print(' '*len(excel_prompt) + '\033[A' + os.path.basename(data))
 
     text_prompt = 'Press ENTER to find and select email template .txt file: '
     input(text_prompt)
     text = filedialog.askopenfilename()
-    print(' '*len(text_prompt) + '\033[A' + text)
+    print(' '*len(text_prompt) + '\033[A' + os.path.basename(text))
 
     # Document add
     docs_to_add = []
@@ -121,6 +123,7 @@ def convert_to_html(text):
         out = out.replace(lefttag, lefttag_html)
 
     out = out.replace('}', '</span>')
+    out += ('<br><br>' + signature)
 
     return out
 
@@ -210,7 +213,7 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, all
     session = smtplib.SMTP(providers[provider], 587)
     session.login(from_address, password)
 
-    print('\nLogin Successful.'.upper())
+    print('\nLOGIN SUCCESSFUL')
 
     # Check user is ok with email format
     if preview:
