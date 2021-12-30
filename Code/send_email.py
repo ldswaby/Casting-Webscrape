@@ -40,9 +40,6 @@ providers = {"gmail": "smtp.gmail.com",
              "ionos": "smtp.ionos.de",
              "icloud": "smtp.mail.me.com"}
 
-with open('signature.txt') as sig:
-    signature = sig.read()
-
 ## Functions ##
 def yes_no(prompt):
     x = input(prompt).lower()
@@ -65,7 +62,6 @@ def parse_args():
                         help="Include this flag if you simply want to contact everybody listed in the spreadsheet. "
                              "This essentially overrides the function of the 'CONTACT?' field. If this flag is "
                              "omitted, then only the agents with any contents in this field will be contacted.")
-    parser.set_defaults(open=False)
 
     args = parser.parse_args()
 
@@ -104,12 +100,15 @@ def parse_args():
     usn = input(f"Sender {args.provider.title()} Email Address: ")
     pwd = pwinput("Account Password: ")
 
+    sign = yes_no("Would you like this email to contain your signature? If yes, then this script will assume the "
+                  "relevant HTML is saved in the current directory as 'signature.txt' ('y'/'n'): ")
+
     # check if user wants to preview message before sending
     preview = yes_no("Would you like to preview the email before sending? ('y'/'n'): ")
 
-    return args.provider, data, usn, pwd, subject, text, docs_to_add, args.all, preview
+    return args.provider, data, usn, pwd, subject, text, docs_to_add, sign, args.all, preview
 
-def convert_to_html(text):
+def convert_to_html(text, sign=False):
     """
 
     """
@@ -123,7 +122,12 @@ def convert_to_html(text):
         out = out.replace(lefttag, lefttag_html)
 
     out = out.replace('}', '</span>')
-    out += ('<br><br>' + signature)
+
+    # Add signature
+    if sign:
+        with open('signature.txt') as sig:
+            signature = sig.read()
+        out += ('<br><br>' + signature)
 
     return out
 
@@ -168,7 +172,7 @@ def attach_documents(msg, doc_list):
 
     return msg
 
-def send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add):
+def send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add=False, sign=False):
     """
     Send mail
     """
@@ -181,7 +185,7 @@ def send_mail(session, msg_template, subject, from_address, to_address, firstnam
 
     # Add body to email
     part1 = MIMEText(convert_to_plain(content), "plain")
-    part2 = MIMEText(convert_to_html(content), "html")
+    part2 = MIMEText(convert_to_html(content, sign), "html")
 
     # Add HTML/plain-text parts to MIMEMultipart message
     # The email client will try to render the last part first
@@ -196,7 +200,7 @@ def send_mail(session, msg_template, subject, from_address, to_address, firstnam
 
     return
 
-def main(provider, data, from_address, password, subject, text, docs_to_add, all, preview):
+def main(provider, data, from_address, password, subject, text, docs_to_add, sign, all, preview):
     """
     Function that sedns email to a load of addresses, replacing '-' with their names
     """
@@ -238,7 +242,7 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, all
         to_address = row.EMAIL
 
         print(f'Mailing {to_address} regarding {firstname} {surname}...')
-        send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add)
+        send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add, sign)
         """
         # Insert name into email message
         content = msg_template.replace('$1', firstname).replace('$2', surname)
