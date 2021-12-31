@@ -6,6 +6,7 @@ __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'
 
 ## Imports ##
+import email.message
 import re
 import os
 import sys
@@ -149,7 +150,7 @@ def convert_to_plain(text):
 
     return text
 
-def attach_documents(msg, doc_list):
+def attach_documents(msg: email.message.EmailMessage, doc_list: list):
     """
 
     """
@@ -211,7 +212,7 @@ def main(provider: str, data: str, from_address: str, password: str,
 
     # Check user is ok with email format
     if preview:
-        send_mail(session, msg_template, subject, from_address, from_address, '$NAMES', docs_to_add)
+        send_mail(session, msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign)
         email_ok_prompt = f"A formatted email has been sent to {from_address} for you to inspect. " \
                           f"Are you happy to proceed with contacting agencies? ('y'/'n'): "
         email_ok = yes_no(email_ok_prompt)
