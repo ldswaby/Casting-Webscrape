@@ -9,7 +9,7 @@ __version__ = '0.0.1'
 import re
 import os
 import sys
-
+#import typing
 import markdown
 import pandas as pd
 import argparse
@@ -23,13 +23,17 @@ import tkinter as tk
 from tkinter import filedialog
 
 
-# TODO: add email attachments signature:
-#  https://realpython.com/python-send-email/#sending-fancy-emails
-#  https://stackoverflow.com/questions/10496902/pgp-signing-multipart-e-mails-with-python
-# Add footer to email - would you like to add signature? Y/N  https://stackoverflow.com/questions/60316249/how-to-include-inline-images-in-e-mail-signature-when-sent-out-with-python
-# parse boolean of whether to attach file(s)
-# if yes then askopenfilenames() to select all - need list (if none then empty list)
-# in main(): for file in files: then all code
+# TODO:
+#  1. Why isn't email rendering on Mac Mail app? Test across platforms (compare to manual send)
+#     https://stackoverflow.com/questions/30945195/trying-to-send-alternative-with-mime-but-it-also-shows-up-in-capable-mail-clie
+#     https://stackoverflow.com/questions/3902455/mail-multipart-alternative-vs-multipart-mixed
+#     https://www.google.com/search?q=emails+not+rendering+in+apple+mail+sent+by+python&rlz=1C5CHFA_enGB781GB783&sxsrf=AOaemvKAEqGJo-Vz7FVLQzzzEHHoHJPACg%3A1640949879384&ei=d-jOYfK2Ft6ChbIP0pKrqAQ&ved=0ahUKEwiyzp3V9o31AhVeQUEAHVLJCkUQ4dUDCA8&uact=5&oq=emails+not+rendering+in+apple+mail+sent+by+python&gs_lcp=Cgdnd3Mtd2l6EAM6BwgAEEcQsAM6BAgjECc6BAgAEEM6CgguEMcBENEDEEM6BQgAEJECOg0ILhCxAxDHARDRAxBDOgcIABCxAxBDOggIABCxAxCRAjoKCAAQsQMQgwEQQzoHCCMQ6gIQJzoRCC4QgAQQsQMQgwEQxwEQ0QM6CwgAEIAEELEDEIMBOg4ILhCABBCxAxDHARDRAzoLCC4QgAQQsQMQgwE6CAgAEIAEELEDOgUIABCABDoKCAAQgAQQhwIQFDoGCAAQFhAeOggIIRAWEB0QHjoFCCEQoAE6BwghEAoQoAE6BAghEBVKBAhBGABKBAhGGABQ8AVYn2pgjm5oCHACeACAAYABiAGbI5IBBDQ2LjiYAQCgAQGwAQrIAQjAAQE&sclient=gws-wiz
+#     https://stackoverflow.com/questions/55036268/sending-email-in-python-mimemultipart
+#  2. Group by email address so you don't send multiple emails to the same person (Then for each group, load all
+#     suggested names; e.g. 'Thanks for suggesting Luke Cage, Aidan Swaby, and Penelope Smith...'
+#  3. Change all He/She or Her/Him to They and Them - ask Mum about this
+#
+
 
 
 # show example template email before sending
@@ -98,7 +102,7 @@ def parse_args():
     # Parse email info
     subject = input("Email Subject: ")
     usn = input(f"Sender {args.provider.title()} Email Address: ")
-    pwd = pwinput("Account Password: ")
+    pwd = pwinput(f"{args.provider.title()} Password: ")
 
     sign = yes_no("Would you like this email to contain your signature? If yes, then this script will assume the "
                   "relevant HTML is saved in the current directory as 'signature.txt' ('y'/'n'): ")
@@ -135,15 +139,15 @@ def convert_to_plain(text):
     """
 
     """
-    out = text.replace('*', '')
+    #out = text.replace('*', '')
 
-    # Convert colours: [green]{...} -> ...
-    for lefttag in re.findall(r'\[\w+\]\{', out):
-        out = out.replace(lefttag, '')
+    left_col_tags = re.findall(r'\[\w+\]\{', text)
+    rm = ['*', '}', '#', *left_col_tags]
 
-    out = out.replace('}', '')
+    for x in rm:
+        text = text.replace(x, '')
 
-    return out
+    return text
 
 def attach_documents(msg, doc_list):
     """
@@ -172,35 +176,53 @@ def attach_documents(msg, doc_list):
 
     return msg
 
-def send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add=False, sign=False):
+def send_mail(session: smtplib.SMTP, msg_template: str, subject: str,
+              from_address: str, to_address: str, names: str,
+              docs_to_add: list = None, sign: bool = False):
     """
     Send mail
     """
     # Insert name into email message
-    content = msg_template.replace('$1', firstname).replace('$2', surname)
-    msg = MIMEMultipart("alternative")
-    msg['Subject'] = subject
-    msg['From'] = from_address  # the sender's email address
-    msg['To'] = to_address  # the recipient's email address
+    content = msg_template.replace('$N', names)
+    #msg = MIMEMultipart("alternative")
+    #msg = MIMEMultipart("mixed")
+    #msg['Subject'] = subject
+    #msg['From'] = from_address  # the sender's email address
+    #msg['To'] = to_address  # the recipient's email address
 
     # Add body to email
-    part1 = MIMEText(convert_to_plain(content), "plain")
-    part2 = MIMEText(convert_to_html(content, sign), "html")
+    #part1 = MIMEText(convert_to_plain(content), "plain")
+    #part2 = MIMEText(convert_to_html(content, sign), "html")
 
     # Add HTML/plain-text parts to MIMEMultipart message
     # The email client will try to render the last part first
-    msg.attach(part1)
-    msg.attach(part2)
+    #msg.attach(part1)
+    #msg.attach(part2)
 
     # Attach documents
+    #if docs_to_add:
+    #    msg = attach_documents(msg, docs_to_add)
+
+    #session.sendmail(from_address, to_address, msg.as_string())  # send email
+
+    ###############
+    from email.message import EmailMessage
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['To'] = to_address
+    msg['From'] = from_address
+    msg.set_content(convert_to_plain(content))
+    msg.add_alternative(convert_to_html(content, sign), subtype='html')
     if docs_to_add:
         msg = attach_documents(msg, docs_to_add)
-
-    session.sendmail(from_address, to_address, msg.as_string())  # send email
+    session.send_message(msg)
+    ###############
 
     return
 
-def main(provider, data, from_address, password, subject, text, docs_to_add, sign, all, preview):
+def main(provider: str, data: str, from_address: str, password: str,
+         subject: str, text: str, docs_to_add: list,
+         sign: bool, all: bool, preview: bool):
     """
     Function that sedns email to a load of addresses, replacing '-' with their names
     """
@@ -221,9 +243,7 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, sig
 
     # Check user is ok with email format
     if preview:
-        test_name1 = 'Firstname'
-        test_name2 = 'Surname'
-        send_mail(session, msg_template, subject, from_address, from_address, test_name1, test_name2, docs_to_add)
+        send_mail(session, msg_template, subject, from_address, from_address, '$NAMES', docs_to_add)
         email_ok_prompt = f"A formatted email has been sent to {from_address} for you to inspect. " \
                           f"Are you happy to proceed with contacting agencies? ('y'/'n'): "
         email_ok = yes_no(email_ok_prompt)
@@ -231,42 +251,29 @@ def main(provider, data, from_address, password, subject, text, docs_to_add, sig
         if email_ok:
             pass
         else:
-            sys.exit('Program terminated')
+            sys.exit('\nPROGRAM TERMINATED\n')
 
-    for _, row in df.iterrows():
+    """
+    n=1
+    to_address = list(df.groupby('EMAIL'))[n][0]
+    group = list(df.groupby('EMAIL'))[n][1]
+    group
+    """
+    for to_address, group in df.groupby('EMAIL'):
 
-        # Extract and format name
-        names = row.NAME.split()
-        firstname = names[0]
-        surname = ' '.join(names[1:])
-        to_address = row.EMAIL
+        names = list(group.NAME)
 
-        print(f'Mailing {to_address} regarding {firstname} {surname}...')
-        send_mail(session, msg_template, subject, from_address, to_address, firstname, surname, docs_to_add, sign)
-        """
-        # Insert name into email message
-        content = msg_template.replace('$1', firstname).replace('$2', surname)
-        #msg = MIMEText(content)
-        msg = MIMEMultipart("alternative")
-        msg['Subject'] = subject
-        msg['From'] = from_address   # the sender's email address
-        msg['To'] = to_address  # the recipient's email address
+        if len(names) == 1:
+            n_string = names[0]
+        elif len(names) == 2:
+            n_string = ' and '.join(names)
+        else:
+            n_string = ', '.join(names[:-1]) + f", and {names[-1]}"
 
-        # Add body to email
-        part1 = MIMEText(convert_to_plain(content), "plain")
-        part2 = MIMEText(convert_to_html(content), "html")
+        print(f'Mailing {to_address} regarding {n_string}...')
 
-        # Add HTML/plain-text parts to MIMEMultipart message
-        # The email client will try to render the last part first
-        msg.attach(part1)
-        msg.attach(part2)
+        send_mail(session, msg_template, subject, from_address, to_address, n_string, docs_to_add, sign)
 
-        # Attach documents
-        if docs_to_add:
-            msg = attach_documents(msg, docs_to_add)
-
-        session.sendmail(from_address, to_address, msg.as_string())  # send email
-        """
     session.quit()
     print('\nDone!')
 
