@@ -22,6 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.chrome.service import Service
+from send_email import yes_no
 
 ## Functions ##
 
@@ -40,8 +41,6 @@ def parse_args():
                         dest='pwd_field',
                         help='The HTML field for password login. This is unlikely to change any time soon, so leaving '
                              'the default is fine.')
-    parser.add_argument('--open', dest='open', action='store_true', help='Include this flag to open the file on completion.')
-    parser.set_defaults(open=False)
 
     args = parser.parse_args()
 
@@ -56,17 +55,18 @@ def parse_args():
     root = tk.Tk()  # Initialise dialog box
     root.withdraw()
     outdir = filedialog.askdirectory()  # fetch directory path
+    print(' ' * len(outdir_prompt) + '\033[A' + outdir)  # print at end of previous line
+    root.destroy()  # delete dialog window
 
     if not outdir.endswith('/'):
         outdir += '/'
 
-    root.destroy()  # delete dialog window
-    print(' ' * len(outdir_prompt) + '\033[A' + outdir)  # print at end of previous line
-
     outfile = input("Desired output file name: ")
     outpath = outdir + outfile
 
-    return webpage, args.usn_field, usn, args.pwd_field, pwd, outpath, args.open
+    openfile = yes_no("Would you like to open the file on completion? ('y'/'n'): ")
+
+    return webpage, args.usn_field, usn, args.pwd_field, pwd, outpath, openfile
 
 def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
     """
