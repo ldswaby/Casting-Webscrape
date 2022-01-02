@@ -6,23 +6,13 @@ __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'
 
 ## Imports ##
-import email.message
-import logging
 import re
 import os
-import sys
 import markdown
-import pandas as pd
-import argparse
-from pwinput import pwinput
-import smtplib
-import tkinter as tk
-from tkinter import filedialog
-from email.message import EmailMessage
 import keyring
-
-# TODO:make this the core module
-
+from pwinput import pwinput
+from smtplib import SMTP, SMTPAuthenticationError
+from email.message import EmailMessage
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
@@ -153,7 +143,7 @@ class CustomEmailMessage(EmailMessage):
         return
 
 
-class CustomizedSMPTSession(smtplib.SMTP):
+class CustomizedSMPTSession(SMTP):
     """Customized SMPT session that includes a function to repeatedly try logging in, giving the user the option for the
     correct password to be saved to the keychain, and a function to send a signed Multipart email with multiple
     attachments.
@@ -183,7 +173,7 @@ class CustomizedSMPTSession(smtplib.SMTP):
                 # Attempt to log in
                 self.login(un, pw)
                 logged_in = True
-            except smtplib.SMTPAuthenticationError:
+            except SMTPAuthenticationError:
                 # If error, then re-enter details until successful
                 print("LOGIN FAILED. Please re-enter details: ")
                 un = input(f"Username: ")

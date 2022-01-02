@@ -13,7 +13,6 @@ import subprocess
 import argparse
 import sys
 import time
-from pwinput import pwinput
 import tkinter as tk
 from tkinter import filedialog
 from selenium import webdriver
