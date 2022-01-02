@@ -22,7 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.chrome.service import Service
-from send_email import yes_no
+from core import yes_no, fetch_password
 
 ## Functions ##
 
@@ -47,7 +47,7 @@ def parse_args():
     # More args
     print('\nPLEASE FILL THE FOLLOWING:\n')
     usn = input("Spotlight Username: ")
-    pwd = pwinput("Spotlight Password: ")
+    pwd = fetch_password("Spotlight", usn)  # Obtain keyring from keychain. Set it if absent
     webpage = input("Spotlight shortlist URL: ")
 
     outdir_prompt = 'Hit ENTER to select desired output folder: '

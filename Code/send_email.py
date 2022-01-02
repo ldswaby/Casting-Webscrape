@@ -6,23 +6,14 @@ __author__ = 'Luke Swaby (lds20@ic.ac.uk)'
 __version__ = '0.0.1'
 
 ## Imports ##
-import email.message
-import re
 import os
 import sys
-import markdown
 import pandas as pd
 import argparse
-from pwinput import pwinput
-import smtplib
 import tkinter as tk
 from tkinter import filedialog
-from email.message import EmailMessage
-
-
-# casting@treepetts.co.uk
-# noxdih-zonfav-Tafdu7
-
+import core  # import custom module
+from core import CustomizedSMPTSession
 
 # TODO:
 #  1. Why isn't email rendering on Mac Mail app? Test across platforms (compare to manual send)
@@ -30,14 +21,8 @@ from email.message import EmailMessage
 #     https://stackoverflow.com/questions/3902455/mail-multipart-alternative-vs-multipart-mixed
 #     https://www.google.com/search?q=emails+not+rendering+in+apple+mail+sent+by+python&rlz=1C5CHFA_enGB781GB783&sxsrf=AOaemvKAEqGJo-Vz7FVLQzzzEHHoHJPACg%3A1640949879384&ei=d-jOYfK2Ft6ChbIP0pKrqAQ&ved=0ahUKEwiyzp3V9o31AhVeQUEAHVLJCkUQ4dUDCA8&uact=5&oq=emails+not+rendering+in+apple+mail+sent+by+python&gs_lcp=Cgdnd3Mtd2l6EAM6BwgAEEcQsAM6BAgjECc6BAgAEEM6CgguEMcBENEDEEM6BQgAEJECOg0ILhCxAxDHARDRAxBDOgcIABCxAxBDOggIABCxAxCRAjoKCAAQsQMQgwEQQzoHCCMQ6gIQJzoRCC4QgAQQsQMQgwEQxwEQ0QM6CwgAEIAEELEDEIMBOg4ILhCABBCxAxDHARDRAzoLCC4QgAQQsQMQgwE6CAgAEIAEELEDOgUIABCABDoKCAAQgAQQhwIQFDoGCAAQFhAeOggIIRAWEB0QHjoFCCEQoAE6BwghEAoQoAE6BAghEBVKBAhBGABKBAhGGABQ8AVYn2pgjm5oCHACeACAAYABiAGbI5IBBDQ2LjiYAQCgAQGwAQrIAQjAAQE&sclient=gws-wiz
 #     https://stackoverflow.com/questions/55036268/sending-email-in-python-mimemultipart
-#  2. Group by email address so you don't send multiple emails to the same person (Then for each group, load all
-#     suggested names; e.g. 'Thanks for suggesting Luke Cage, Aidan Swaby, and Penelope Smith...'
-#  3. Change all He/She or Her/Him to They and Them - ask Mum about this
+#  2. Run script, inputting and confirming incorrect password. See what error it throws. Then delete password ("ionos", "casting...")
 #
-
-
-
-# show example template email before sending
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
@@ -46,14 +31,6 @@ providers = {"gmail": "smtp.gmail.com",
              "icloud": "smtp.mail.me.com"}
 
 ## Functions ##
-def yes_no(prompt):
-    x = input(prompt).lower()
-
-    while x not in ['y', 'n']:
-        x = input("Please enter 'y' (yes) or 'n' (no): ").lower()
-
-    return True if x == 'y' else False
-
 def parse_args():
     """
     Parses arguments from the command line
@@ -87,107 +64,32 @@ def parse_args():
 
     # Document add
     docs_to_add = []
-    doc_add = yes_no("Do you wish to add any documents to this email? ('y'/'n'): ")
+    doc_add = core.yes_no("Do you wish to add any documents to this email? ('y'/'n'): ")
     if doc_add:
         doc = filedialog.askopenfilename()  # fetch doc
         docs_to_add.append(doc)
 
-        doc_add = yes_no("Do you wish to add another document? ('y'/'n'): ")
+        doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
         while doc_add:
             doc = filedialog.askopenfilename()  # fetch doc
             docs_to_add.append(doc)
-            doc_add = yes_no("Do you wish to add another document? ('y'/'n'): ")
+            doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
 
     root.destroy()  # remove root window
 
-    # Parse email info
-    subject = input("Email Subject: ")
-    usn = input(f"Sender {args.provider.title()} Email Address: ")
-    pwd = pwinput(f"{args.provider.title()} Password: ")
-
-    sign = yes_no("Would you like this email to contain your signature? If yes, then this script will assume the "
+    sign = core.yes_no("Would you like this email to contain your signature? If yes, then this script will assume the "
                   "relevant HTML is saved in the current directory as 'signature.txt' ('y'/'n'): ")
 
     # check if user wants to preview message before sending
-    preview = yes_no("Would you like to preview the email before sending? ('y'/'n'): ")
+    preview = core.yes_no("Would you like to preview the email before sending? ('y'/'n'): ")
+
+    # Parse email login info
+    subject = input("Email Subject: ")
+    usn = input(f"Sender {args.provider.title()} Email Address: ")
+    pwd = core.fetch_password(args.provider, usn)  # Obtain keyring from keychain. Set it if absent
 
     return args.provider, data, usn, pwd, subject, text, docs_to_add, sign, args.all, preview
 
-def convert_to_html(text, sign=False):
-    """
-
-    """
-    out = text.replace('\n', '<br>')  # convert linebreaks
-    out = markdown.markdown(out)  # bold and italics
-
-    # Convert colours: [green]{...} -> <span style="color: green">...</span>
-    for lefttag in re.findall(r'\[\w+\]\{', out):
-        col = re.search(r'\[(\w+)\]', lefttag).group(1)
-        lefttag_html = f'<span style="color: {col}">'
-        out = out.replace(lefttag, lefttag_html)
-
-    out = out.replace('}', '</span>')
-
-    # Add signature
-    if sign:
-        with open('signature.txt') as sig:
-            signature = sig.read()
-        out += ('<br><br>' + signature)
-
-    return out
-
-def convert_to_plain(text):
-    """
-
-    """
-    #out = text.replace('*', '')
-
-    left_col_tags = re.findall(r'\[\w+\]\{', text)
-    rm = ['*', '}', '#', *left_col_tags]
-
-    for x in rm:
-        text = text.replace(x, '')
-
-    return text
-
-def attach_documents(msg: email.message.EmailMessage, doc_list: list):
-    """
-
-    """
-    for doc in doc_list:
-        # Open file in binary mode
-        with open(doc, "rb") as attachment:
-            # Add file as application
-            content = attachment.read()
-            msg.add_attachment(content, maintype='application',
-                               subtype=os.path.splitext(doc)[1],
-                               filename=os.path.basename(doc))
-
-    return msg
-
-def send_mail(session: smtplib.SMTP, msg_template: str, subject: str,
-              from_address: str, to_address: str, names: str,
-              docs_to_add: list = None, sign: bool = False):
-    """
-    Send mail
-    """
-    # Insert name into email message
-    content = msg_template.replace('$N', names)
-
-    msg = EmailMessage()
-    msg['Subject'] = subject
-    msg['To'] = to_address
-    msg['From'] = from_address
-
-    msg.set_content(convert_to_plain(content))
-    msg.add_alternative(convert_to_html(content, sign), subtype='html')
-
-    if docs_to_add:
-        msg = attach_documents(msg, docs_to_add)
-
-    session.send_message(msg)
-
-    return
 
 def main(provider: str, data: str, from_address: str, password: str,
          subject: str, text: str, docs_to_add: list,
@@ -205,29 +107,31 @@ def main(provider: str, data: str, from_address: str, password: str,
         msg_template = email.read()
 
     # Login to email account
-    session = smtplib.SMTP(providers[provider], 587)
-    session.login(from_address, password)
-
-    print('\nLOGIN SUCCESSFUL\n')
+    session = CustomizedSMPTSession(providers[provider], 587)
+    session.repeat_attempt_login(provider, from_address, password)
 
     # Check user is ok with email format
     if preview:
-        send_mail(session, msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign)
+        session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign)
         email_ok_prompt = f"A formatted email has been sent to {from_address} for you to inspect. " \
                           f"Are you happy to proceed with contacting agencies? ('y'/'n'): "
-        email_ok = yes_no(email_ok_prompt)
+        email_ok = core.yes_no(email_ok_prompt)
 
         if email_ok:
             print('\nMAILING AGENCIES...')
         else:
-            sys.exit('\nPROGRAM TERMINATED\n')
+            sys.exit('\nPROGRAM TERMINATED.\n')
 
     # Mail agencies by group
     for to_address, group in df.groupby('EMAIL'):
 
         names = list(group.NAME)
 
-        if len(names) == 1:
+        # Create names string
+        if len(names) == 0:
+            print(f"WARNING: No names provided for {to_address}. Skipping...")
+            continue  # move to next address
+        elif len(names) == 1:
             n_string = names[0]
         elif len(names) == 2:
             n_string = ' and '.join(names)
@@ -236,7 +140,7 @@ def main(provider: str, data: str, from_address: str, password: str,
 
         print(f'Mailing {to_address} regarding {n_string}...')
 
-        send_mail(session, msg_template, subject, from_address, to_address, n_string, docs_to_add, sign)
+        session.send_email(msg_template, subject, from_address, to_address, n_string, docs_to_add, sign)
 
     session.quit()
     print('\nDone!')
