@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 
 ## Imports ##
 import re
+import os
 import pandas as pd
 import subprocess
 import argparse
@@ -57,11 +58,8 @@ def parse_args():
     print(' ' * len(outdir_prompt) + '\033[A' + outdir)  # print at end of previous line
     root.destroy()  # delete dialog window
 
-    if not outdir.endswith('/'):
-        outdir += '/'
-
     outfile = input("Desired output file name: ")
-    outpath = outdir + outfile
+    outpath = os.path.join(outdir, outfile)
 
     openfile = yes_no("Would you like to open the file on completion? ('y'/'n'): ")
 

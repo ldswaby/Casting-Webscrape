@@ -13,6 +13,9 @@ import keyring
 from pwinput import pwinput
 from smtplib import SMTP, SMTPAuthenticationError
 from email.message import EmailMessage
+import logging
+from datetime import datetime
+import functools
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
@@ -63,21 +66,6 @@ def password_to_keychain(service, un, pw):
 
     return
 
-
-def email_use_logger(orig_func):
-    """Logging decorator for the send_email function of the CustomizedSMPTSession class.
-    """
-    import logging
-    from datetime import datetime
-    logging.basicConfig(filename="../email.log", level=logging.INFO)
-
-    def wrapper(*args, **kwargs):
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M")
-        logging.info(f"{dt_string}: Email sent from {args[3]} to {args[4]} regarding {args[5]}.")
-        return orig_func(*args, **kwargs)
-
-    return wrapper
 
 
 class EmailText():
@@ -185,12 +173,11 @@ class CustomizedSMPTSession(SMTP):
 
         return
 
-    @email_use_logger
     def send_email(self, msg_template: str, subject: str,
                   from_address: str, to_address: str, names: str,
-                  docs_to_add: list = None, sign: bool = False):
-        """
-        Send email
+                  docs_to_add: list = None, sign: bool = False, ghost: bool = False):
+        # TODO: add ghost as an option here and include log in this func, then delete all new shit added to send_email
+        """Send email (without logging)
         """
         content = msg_template.replace('$N', names)  # Insert name into email message
         content = EmailText(content)
@@ -204,8 +191,15 @@ class CustomizedSMPTSession(SMTP):
         msg.add_alternative(content.convert_to_html(sign), subtype='html')
 
         if docs_to_add:
-            msg.add_attachments(docs_to_add)
+            msg.add_attachments(docs_to_add)  # attach documents if any
 
         self.send_message(msg)
+
+        # Logging
+        if not ghost:
+            logging.basicConfig(filename="../email.log", level=logging.INFO)
+            now = datetime.now()
+            dt_string = now.strftime("%d/%m/%Y %H:%M")  # fetch date and time
+            logging.info(f"{dt_string}: Email sent from {from_address} to {to_address} regarding {names} (Subject: '{subject}'.")
 
         return

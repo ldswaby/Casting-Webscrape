@@ -22,6 +22,7 @@ from core import CustomizedSMPTSession
 #     https://www.google.com/search?q=emails+not+rendering+in+apple+mail+sent+by+python&rlz=1C5CHFA_enGB781GB783&sxsrf=AOaemvKAEqGJo-Vz7FVLQzzzEHHoHJPACg%3A1640949879384&ei=d-jOYfK2Ft6ChbIP0pKrqAQ&ved=0ahUKEwiyzp3V9o31AhVeQUEAHVLJCkUQ4dUDCA8&uact=5&oq=emails+not+rendering+in+apple+mail+sent+by+python&gs_lcp=Cgdnd3Mtd2l6EAM6BwgAEEcQsAM6BAgjECc6BAgAEEM6CgguEMcBENEDEEM6BQgAEJECOg0ILhCxAxDHARDRAxBDOgcIABCxAxBDOggIABCxAxCRAjoKCAAQsQMQgwEQQzoHCCMQ6gIQJzoRCC4QgAQQsQMQgwEQxwEQ0QM6CwgAEIAEELEDEIMBOg4ILhCABBCxAxDHARDRAzoLCC4QgAQQsQMQgwE6CAgAEIAEELEDOgUIABCABDoKCAAQgAQQhwIQFDoGCAAQFhAeOggIIRAWEB0QHjoFCCEQoAE6BwghEAoQoAE6BAghEBVKBAhBGABKBAhGGABQ8AVYn2pgjm5oCHACeACAAYABiAGbI5IBBDQ2LjiYAQCgAQGwAQrIAQjAAQE&sclient=gws-wiz
 #     https://stackoverflow.com/questions/55036268/sending-email-in-python-mimemultipart
 #  2. Run script, inputting and confirming incorrect password. See what error it throws. Then delete password ("ionos", "casting...")
+#  3. Select HTML signature once then store in keychain - give option to change also (while loop with 3 options? change/continue...)
 #
 
 ## Variables ##
@@ -44,6 +45,8 @@ def parse_args():
                         help="Include this flag if you simply want to contact everybody listed in the spreadsheet. "
                              "This essentially overrides the function of the 'CONTACT?' field. If this flag is "
                              "omitted, then only the agents with any contents in this field will be contacted.")
+    parser.add_argument('--ghost', dest='ghost', action='store_true',
+                        help="If flag included will not log email")
 
     args = parser.parse_args()
 
@@ -88,14 +91,29 @@ def parse_args():
     usn = input(f"Sender {args.provider.title()} Email Address: ")
     pwd = core.fetch_password(args.provider, usn)  # Obtain keyring from keychain. Set it if absent
 
-    return args.provider, data, usn, pwd, subject, text, docs_to_add, sign, args.all, preview
+    return args.provider, data, usn, pwd, subject, text, docs_to_add, sign, args.all, preview, args.ghost
+
+
+def create_name_string(names: list) -> str:
+    """Function to take list of name strings and joins them together into a single grammatically correct string.
+    """
+    assert names, "Input names list has length = 0"  # debugging
+
+    if len(names) == 1:
+        n_string = names[0]
+    elif len(names) == 2:
+        n_string = ' and '.join(names)
+    else:
+        n_string = ', '.join(names[:-1]) + f", and {names[-1]}"
+
+    return n_string
 
 
 def main(provider: str, data: str, from_address: str, password: str,
          subject: str, text: str, docs_to_add: list,
-         sign: bool, all: bool, preview: bool):
+         sign: bool, all: bool = False, preview: bool = True, ghost: bool = False):
     """
-    Function that sedns email to a load of addresses, replacing '-' with their names
+    Function that sends email to a load of addresses, replacing '-' with their names
     """
     # Read data
     df = pd.read_excel(data, keep_default_na=False)
@@ -111,18 +129,21 @@ def main(provider: str, data: str, from_address: str, password: str,
     session.repeat_attempt_login(provider, from_address, password)
 
     # Check user is ok with email format
-    if preview:
+    while preview:
         session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign)
         email_ok_prompt = f"A formatted email has been sent to {from_address} for you to inspect. " \
                           f"Are you happy to proceed with contacting agencies? ('y'/'n'): "
         email_ok = core.yes_no(email_ok_prompt)
 
         if email_ok:
-            print('\nMAILING AGENCIES...')
+            break
         else:
-            sys.exit('\nPROGRAM TERMINATED.\n')
+            input(f"Please edit template at path '{text}'. Hit ENTER to re-preview when you have saved new contents.")
+            with open(text) as email:
+                msg_template = email.read()
 
     # Mail agencies by group
+    print('\nMAILING AGENCIES...')
     for to_address, group in df.groupby('EMAIL'):
 
         names = list(group.NAME)
@@ -130,17 +151,12 @@ def main(provider: str, data: str, from_address: str, password: str,
         # Create names string
         if len(names) == 0:
             print(f"WARNING: No names provided for {to_address}. Skipping...")
-            continue  # move to next address
-        elif len(names) == 1:
-            n_string = names[0]
-        elif len(names) == 2:
-            n_string = ' and '.join(names)
-        else:
-            n_string = ', '.join(names[:-1]) + f", and {names[-1]}"
+            continue  # move on to next address/group
+
+        n_string = create_name_string(names)
 
         print(f'Mailing {to_address} regarding {n_string}...')
-
-        session.send_email(msg_template, subject, from_address, to_address, n_string, docs_to_add, sign)
+        session.send_email(msg_template, subject, from_address, to_address, n_string, docs_to_add, sign, ghost)
 
     session.quit()
     print('\nDone!')
