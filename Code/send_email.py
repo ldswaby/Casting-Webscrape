@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import filedialog
 import core  # import custom module
 from core import CustomizedSMPTSession
+import smtplib
 
 # TODO:
 #  1. Why isn't email rendering on Mac Mail app? Test across platforms (compare to manual send)
@@ -126,19 +127,30 @@ def main(provider: str, data: str, from_address: str, password: str,
 
     # Login to email account
     session = CustomizedSMPTSession(providers[provider], 587)
-    session.repeat_attempt_login(provider, from_address, password)
+    from_address, password = session.repeat_attempt_login(provider, from_address, password)
 
     # Check user is ok with email format
+    # TODO: catch smtplib.SMTPSenderRefused thrown by send_email
     while preview:
-        session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign)
-        email_ok_prompt = f"A formatted email has been sent to {from_address} for you to inspect. " \
-                          f"Are you happy to proceed with contacting agencies? ('y'/'n'): "
+
+        try:
+            session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign,
+                               ghost=True)
+        except smtplib.SMTPSenderRefused:
+            # If session times out then re-create it
+            session = CustomizedSMPTSession(providers[provider], 587)
+            session.login(from_address, password)
+            session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign,
+                               ghost=True)
+
+        email_ok_prompt = f">> A formatted email has been sent to {from_address} for you to inspect. " \
+                          f"Are you happy to forward this to agencies? ('y'/'n'): "
         email_ok = core.yes_no(email_ok_prompt)
 
         if email_ok:
             break
         else:
-            input(f"Please edit template at path '{text}'. Hit ENTER to re-preview when you have saved new contents.")
+            input(f">> Please edit template at path '{text}'. Hit ENTER to re-preview when you have saved new contents.")
             with open(text) as email:
                 msg_template = email.read()
 

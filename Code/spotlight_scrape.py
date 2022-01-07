@@ -90,7 +90,7 @@ def main(webpage, usn_field, usn, pwd_field, pwd, outfile, open=False):
 
     driver.find_element(By.ID, "sign-in-button").click()  # Sign in
 
-    delay = 10  # seconds
+    delay = 30  # seconds till timeout error
     try:
         myElem = WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.ID, "Radio-Signal")))
         time.sleep(5)

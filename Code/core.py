@@ -15,7 +15,6 @@ from smtplib import SMTP, SMTPAuthenticationError
 from email.message import EmailMessage
 import logging
 from datetime import datetime
-import functools
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
@@ -152,7 +151,7 @@ class CustomizedSMPTSession(SMTP):
 
     def repeat_attempt_login(self, service: str, un: str, pw: str):
         """Function that tries to log in with provided details, re-trying with new ones over and over until logged in
-        successfully, saving the new (correct) password to the keychain.
+        successfully, saving the new (correct) password to the keychain, and returning correct credentials.
         """
         logged_in = False
 
@@ -171,7 +170,7 @@ class CustomizedSMPTSession(SMTP):
 
         password_to_keychain(service, un, pw)
 
-        return
+        return un, pw
 
     def send_email(self, msg_template: str, subject: str,
                   from_address: str, to_address: str, names: str,
