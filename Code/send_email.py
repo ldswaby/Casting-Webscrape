@@ -32,6 +32,8 @@ providers = {"gmail": "smtp.gmail.com",
              "ionos": "smtp.ionos.de",
              "icloud": "smtp.mail.me.com"}
 
+# TODO: put this at top of SMPT class
+
 ## Functions ##
 def parse_args():
     """
@@ -121,41 +123,21 @@ def main(provider: str, data: str, from_address: str, password: str,
     if not all:
         df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
 
-    # Open text file and extract email template
-    with open(text) as email:
-        msg_template = email.read()
-
     # Login to email account
-    session = CustomizedSMPTSession(providers[provider], 587)
-    from_address, password = session.repeat_attempt_login(provider, from_address, password)
+    prov_str = providers[provider]
+    session = CustomizedSMPTSession(prov_str, 587)
+    from_address, password = session.repeat_attempt_login(provider, from_address, password, return_creds=True)
 
     # Check user is ok with email format
-    # TODO: catch smtplib.SMTPSenderRefused thrown by send_email
-    while preview:
-
-        try:
-            session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign,
-                               ghost=True)
-        except smtplib.SMTPSenderRefused:
-            # If session times out then re-create it
-            session = CustomizedSMPTSession(providers[provider], 587)
-            session.login(from_address, password)
-            session.send_email(msg_template, subject, from_address, from_address, '$NAMES', docs_to_add, sign,
-                               ghost=True)
-
-        email_ok_prompt = f">> A formatted email has been sent to {from_address} for you to inspect. " \
-                          f"Are you happy to forward this to agencies? ('y'/'n'): "
-        email_ok = core.yes_no(email_ok_prompt)
-
-        if email_ok:
-            break
-        else:
-            input(f">> Please edit template at path '{text}'. Hit ENTER to re-preview when you have saved new contents.")
-            with open(text) as email:
-                msg_template = email.read()
+    if preview:
+        session.preview_email(text, prov_str, from_address, password, subject, docs_to_add, sign)
 
     # Mail agencies by group
     print('\nMAILING AGENCIES...')
+
+    with open(text) as email:
+        msg_template = email.read()  # Open text file and extract email template
+
     for to_address, group in df.groupby('EMAIL'):
 
         names = list(group.NAME)
