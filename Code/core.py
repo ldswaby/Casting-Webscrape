@@ -74,15 +74,14 @@ class EmailText():
         self.text = text
 
     def convert_to_html(self, sign=False):
-        """
-        Converts customised markdown text to html, including an HTML signature if desired.
+        """Converts customised markdown text to html, including an HTML signature if desired.
         """
         out = self.text.replace('\n', '<br>')  # convert linebreaks
         out = markdown.markdown(out)  # bold and italics
 
         # Convert colours: [green]{...} -> <span style="color: green">...</span>
         for lefttag in re.findall(r'\[\w+\]\{', out):
-            col = re.search(r'\[(\w+)\]', lefttag).group(1)
+            col = re.search(r'\[(\w+)\]', lefttag).group(1)  # extract colour string
             lefttag_html = f'<span style="color: {col}">'
             out = out.replace(lefttag, lefttag_html)
 
@@ -97,8 +96,7 @@ class EmailText():
         return out
 
     def convert_to_plain(self):
-        """
-        Converts customised markdown text to plain text.
+        """Converts customised markdown text to plain text.
         """
         left_col_tags = re.findall(r'\[\w+\]\{', self.text)
         rm = ['*', '}', '#', *left_col_tags]
@@ -114,7 +112,7 @@ class CustomEmailMessage(EmailMessage):
     """Modified EmailMessage() that allows attachments of multiple docs specified in a list of path strings
     """
 
-    def add_attachments(self, doc_list: list = None):
+    def add_attachments(self, doc_list: list):
         """Function to add multiple attachments to an email.
         """
         for doc in doc_list:
@@ -162,12 +160,13 @@ class CustomizedSMPTSession(smtplib.SMTP):
 
         return un, pw if return_creds else None
 
-    def reconnect(self, provider, from_address, password):
+    def reconnect(self, from_address, password):
         """Reconnects to server
         """
-        self.connect(self._host, 587)
-        self.ehlo(self._host)
-        self.repeat_attempt_login(self._host, from_address, password)
+        host = self._host
+        self.connect(host, 587)
+        self.ehlo(host)
+        self.repeat_attempt_login(host, from_address, password)
 
         return
 

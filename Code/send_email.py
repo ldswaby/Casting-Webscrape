@@ -17,22 +17,16 @@ from core import CustomizedSMPTSession
 import smtplib
 
 # TODO:
-#  1. Why isn't email rendering on Mac Mail app? Test across platforms (compare to manual send)
-#     https://stackoverflow.com/questions/30945195/trying-to-send-alternative-with-mime-but-it-also-shows-up-in-capable-mail-clie
-#     https://stackoverflow.com/questions/3902455/mail-multipart-alternative-vs-multipart-mixed
-#     https://www.google.com/search?q=emails+not+rendering+in+apple+mail+sent+by+python&rlz=1C5CHFA_enGB781GB783&sxsrf=AOaemvKAEqGJo-Vz7FVLQzzzEHHoHJPACg%3A1640949879384&ei=d-jOYfK2Ft6ChbIP0pKrqAQ&ved=0ahUKEwiyzp3V9o31AhVeQUEAHVLJCkUQ4dUDCA8&uact=5&oq=emails+not+rendering+in+apple+mail+sent+by+python&gs_lcp=Cgdnd3Mtd2l6EAM6BwgAEEcQsAM6BAgjECc6BAgAEEM6CgguEMcBENEDEEM6BQgAEJECOg0ILhCxAxDHARDRAxBDOgcIABCxAxBDOggIABCxAxCRAjoKCAAQsQMQgwEQQzoHCCMQ6gIQJzoRCC4QgAQQsQMQgwEQxwEQ0QM6CwgAEIAEELEDEIMBOg4ILhCABBCxAxDHARDRAzoLCC4QgAQQsQMQgwE6CAgAEIAEELEDOgUIABCABDoKCAAQgAQQhwIQFDoGCAAQFhAeOggIIRAWEB0QHjoFCCEQoAE6BwghEAoQoAE6BAghEBVKBAhBGABKBAhGGABQ8AVYn2pgjm5oCHACeACAAYABiAGbI5IBBDQ2LjiYAQCgAQGwAQrIAQjAAQE&sclient=gws-wiz
-#     https://stackoverflow.com/questions/55036268/sending-email-in-python-mimemultipart
+#  1. Test across platforms (compare to manual send)
 #  2. Run script, inputting and confirming incorrect password. See what error it throws. Then delete password ("ionos", "casting...")
 #  3. Select HTML signature once then store in keychain - give option to change also (while loop with 3 options? change/continue...)
-#
+#  4. Make a change_keychain_password script
 
 ## Variables ##
 providers = {"gmail": "smtp.gmail.com",
              "hotmail": "smtp.live.com",
              "ionos": "smtp.ionos.de",
              "icloud": "smtp.mail.me.com"}
-
-# TODO: put this at top of SMPT class
 
 ## Functions ##
 def parse_args():
@@ -113,7 +107,7 @@ def create_name_string(names: list) -> str:
 
 
 def main(provider: str, data: str, from_address: str, password: str,
-         subject: str, text: str, docs_to_add: list,
+         subject: str, text_path: str, docs_to_add: list,
          sign: bool, all: bool = False, preview: bool = True, ghost: bool = False):
     """
     Function that sends email to a load of addresses, replacing '-' with their names
@@ -124,25 +118,24 @@ def main(provider: str, data: str, from_address: str, password: str,
         df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
 
     # Login to email account
-    prov_str = providers[provider]
-    session = CustomizedSMPTSession(prov_str, 587)
+    host = providers[provider]
+    session = CustomizedSMPTSession(host, 587)
     from_address, password = session.repeat_attempt_login(provider, from_address, password, return_creds=True)
 
     # Check user is ok with email format
     if preview:
-        session.preview_email(text, prov_str, from_address, password, subject, docs_to_add, sign)
+        session.preview_email(text_path, from_address, password, subject, docs_to_add, sign)
 
     # Mail agencies by group
     print('\nMAILING AGENCIES...')
 
-    with open(text) as email:
+    with open(text_path) as email:
         msg_template = email.read()  # Open text file and extract email template
 
     for to_address, group in df.groupby('EMAIL'):
 
         names = list(group.NAME)
 
-        # Create names string
         if len(names) == 0:
             print(f"WARNING: No names provided for {to_address}. Skipping...")
             continue  # move on to next address/group
@@ -156,6 +149,7 @@ def main(provider: str, data: str, from_address: str, password: str,
     print('\nDone!')
 
     return
+
 
 if __name__ == '__main__':
     main(*parse_args())
