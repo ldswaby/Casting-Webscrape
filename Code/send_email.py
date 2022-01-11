@@ -114,8 +114,13 @@ def main(provider: str, data: str, from_address: str, password: str,
     """
     # Read data
     df = pd.read_excel(data, keep_default_na=False)
+
     if not all:
-        df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
+        if any(df['CONTACT?']):
+            df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
+        else:
+            sys.exit("ERROR: Nothing found in the 'CONTACT?' column and --all flag not used. "
+                     "Please use one or the other.")
 
     # Login to email account
     host = providers[provider]
