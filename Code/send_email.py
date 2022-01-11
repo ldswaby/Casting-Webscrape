@@ -7,14 +7,12 @@ __version__ = '0.0.1'
 
 ## Imports ##
 import os
-import sys
 import pandas as pd
 import argparse
 import tkinter as tk
 from tkinter import filedialog
 import core  # import custom module
 from core import CustomizedSMPTSession
-import smtplib
 
 # TODO:
 #  1. Test across platforms (compare to manual send)
@@ -69,10 +67,13 @@ def parse_args():
         doc = filedialog.askopenfilename()  # fetch doc
         docs_to_add.append(doc)
 
+        print(f"Document '{os.path.basename(doc)}' added.")
+
         doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
         while doc_add:
             doc = filedialog.askopenfilename()  # fetch doc
             docs_to_add.append(doc)
+            print(f"Document '{os.path.basename(doc)}' added.")
             doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
 
     root.destroy()  # remove root window
@@ -119,6 +120,7 @@ def main(provider: str, data: str, from_address: str, password: str,
         if any(df['CONTACT?']):
             df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
         else:
+            # if no --all flag and nothing in CONTACT?, raise exception
             raise Exception("ERROR: Nothing found in the 'CONTACT?' column and --all flag not used. "
                             "Please use one or the other.")
 
