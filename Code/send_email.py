@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import filedialog
 import core  # import custom module
 from core import CustomizedSMPTSession
+import warnings
 
 # TODO:
 #  1. Test across platforms (compare to manual send)
@@ -66,7 +67,6 @@ def parse_args():
     if doc_add:
         doc = filedialog.askopenfilename()  # fetch doc
         docs_to_add.append(doc)
-
         print(f"Document '{os.path.basename(doc)}' added.")
 
         doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
@@ -159,4 +159,5 @@ def main(provider: str, data: str, from_address: str, password: str,
 
 
 if __name__ == '__main__':
+    warnings.simplefilter("ignore")
     main(*parse_args())
