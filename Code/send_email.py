@@ -119,8 +119,8 @@ def main(provider: str, data: str, from_address: str, password: str,
         if any(df['CONTACT?']):
             df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
         else:
-            sys.exit("ERROR: Nothing found in the 'CONTACT?' column and --all flag not used. "
-                     "Please use one or the other.")
+            raise Exception("ERROR: Nothing found in the 'CONTACT?' column and --all flag not used. "
+                            "Please use one or the other.")
 
     # Login to email account
     host = providers[provider]
