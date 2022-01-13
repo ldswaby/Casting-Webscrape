@@ -21,12 +21,6 @@ import warnings
 #  3. Select HTML signature once then store in keychain - give option to change also (while loop with 3 options? change/continue...)
 #  4. Make a change_keychain_password script
 
-## Variables ##
-providers = {"gmail": "smtp.gmail.com",
-             "hotmail": "smtp.live.com",
-             "ionos": "smtp.ionos.de",
-             "icloud": "smtp.mail.me.com"}
-
 ## Functions ##
 def parse_args():
     """
@@ -35,8 +29,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Script for sending a template email to all (or a subset of) actors "
                                                  "in an Excel spreadsheet (output by spotlight_scrape.py).")
 
-    parser.add_argument('-p', dest='provider', default="ionos", choices=list(providers.keys()),
-                        help=f"Email service provider. Choose one of: {', '.join(providers.keys())}.")
+    parser.add_argument('-p', dest='provider', default="ionos", choices=list(core.providers.keys()),
+                        help=f"Email service provider. Choose one of: {', '.join(core.providers.keys())}.")
     parser.add_argument('--all', dest='all', action='store_true',
                         help="Include this flag if you simply want to contact everybody listed in the spreadsheet. "
                              "This essentially overrides the function of the 'CONTACT?' field. If this flag is "
@@ -67,13 +61,13 @@ def parse_args():
     if doc_add:
         doc = filedialog.askopenfilename()  # fetch doc
         docs_to_add.append(doc)
-        print(f"Document '{os.path.basename(doc)}' added.")
+        print(f" - Document '{os.path.basename(doc)}' added.")
 
         doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
         while doc_add:
             doc = filedialog.askopenfilename()  # fetch doc
             docs_to_add.append(doc)
-            print(f"Document '{os.path.basename(doc)}' added.")
+            print(f" - Document '{os.path.basename(doc)}' added.")
             doc_add = core.yes_no("Do you wish to add another document? ('y'/'n'): ")
 
     root.destroy()  # remove root window
@@ -117,15 +111,15 @@ def main(provider: str, data: str, from_address: str, password: str,
     df = pd.read_excel(data, keep_default_na=False)
 
     if not all:
+        # If --all flag omitted, then if CONTACT? col used then subset df accordingly, otherwise exit and notify user
         if any(df['CONTACT?']):
             df = df.loc[df['CONTACT?'].astype(bool)]  # subset only those you wish to contact
         else:
-            # if no --all flag and nothing in CONTACT?, raise exception
-            raise Exception("ERROR: Nothing found in the 'CONTACT?' column and --all flag not used. "
+            raise Exception("Nothing found in the 'CONTACT?' column and --all flag not used. "
                             "Please use one or the other.")
 
     # Login to email account
-    host = providers[provider]
+    host = core.providers[provider]
     session = CustomizedSMPTSession(host, 587)
     from_address, password = session.repeat_attempt_login(provider, from_address, password, return_creds=True)
 
