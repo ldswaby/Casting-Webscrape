@@ -76,8 +76,11 @@ class EmailText():
     def convert_to_html(self, sign=False):
         """Converts customised markdown text to html, including an HTML signature if desired.
         """
-        out = self.text.replace('\n', '<br>')  # convert linebreaks
-        out = markdown.markdown(out)  # bold and italics
+        out = markdown.markdown(self.text)  # bold and italics
+
+        # TODO: enable coloured titles
+        # # H1 -> <h1>H1</h1>
+        # [blue]{# H1} -> <h1 style="color:blue;">H1</h1>
 
         # Convert colours: [green]{...} -> <span style="color: green">...</span>
         for lefttag in re.findall(r'\[\w+\]\{', out):
@@ -154,7 +157,7 @@ class CustomizedSMPTSession(smtplib.SMTP):
                 un = input(f"Username: ")
                 pw = pwinput(f"Password: ")
 
-        print('\nLOGIN SUCCESSFUL\n')
+        print('\nLOGIN SUCCESSFUL')
 
         password_to_keychain(service, un, pw)
 

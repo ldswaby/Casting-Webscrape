@@ -72,8 +72,7 @@ def parse_args():
 
     root.destroy()  # remove root window
 
-    sign = core.yes_no("Would you like this email to contain your signature? If yes, then this script will assume the "
-                  "relevant HTML is saved in the current directory as 'signature.txt' ('y'/'n'): ")
+    sign = core.yes_no("Would you like this email to contain your HTML signature? ('y'/'n'): ")
 
     # check if user wants to preview message before sending
     preview = core.yes_no("Would you like to preview the email before sending? ('y'/'n'): ")
