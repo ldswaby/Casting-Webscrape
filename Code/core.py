@@ -76,37 +76,52 @@ class EmailText():
     def convert_to_html(self, sign=False):
         """Converts customised markdown text to html, including an HTML signature if desired.
         """
-        out = markdown.markdown(self.text)  # bold and italics
+        raw_txt = self.text
 
-        # TODO: enable coloured titles
-        # # H1 -> <h1>H1</h1>
-        # [blue]{# H1} -> <h1 style="color:blue;">H1</h1>
+        # Mark coloured headings in HTML-compatible format
+        for col_heading in re.findall(r'\[\D+\]\{\#+.+\}', raw_txt):
+            col = re.search(r'\[(\w+)\]', col_heading).group(1)  # extract colour
+            bw_heading = re.split(r'{|}', col_heading)[1]  # extract heading
+            raw_txt = raw_txt.replace(col_heading, f'{bw_heading}${col}$')  # replace col_heading with identifier (ARBITRARY $...$)
 
-        # Convert colours: [green]{...} -> <span style="color: green">...</span>
-        for lefttag in re.findall(r'\[\w+\]\{', out):
+        html_txt = markdown.markdown(raw_txt)  # Convert to HTML
+
+        # Translate coloured headings
+        for ch in re.findall(r'\<h\d+\>.+\$.+\$.+\>', html_txt):
+            col = re.search(r'\$(\w+)\$', ch).group(1)  # extract colour
+            ch_new = re.sub(r'\$\w+\$', '', ch)  # delete bit at end
+            # insert colour styling string into brace
+            ins_ix = ch_new.index('>')
+            ch_new = ch_new[:ins_ix] + f' style="color:{col};"' + ch_new[ins_ix:]
+            html_txt = html_txt.replace(ch, ch_new)
+
+        # Convert text body colours: [green]{...} -> <span style="color: green">...</span>
+        for lefttag in re.findall(r'\[\w+\]\{', html_txt):
             col = re.search(r'\[(\w+)\]', lefttag).group(1)  # extract colour string
             lefttag_html = f'<span style="color: {col}">'
-            out = out.replace(lefttag, lefttag_html)
+            html_txt = html_txt.replace(lefttag, lefttag_html)
 
-        out = out.replace('}', '</span>')
+        html_txt = html_txt.replace('}', '</span>')
 
         # Add signature
         if sign:
             with open('signature.txt') as sig:
                 signature = sig.read()
-            out += ('<br><br>' + signature)
+            html_txt += ('<br><br>' + signature)
 
-        return out
+        return html_txt
 
     def convert_to_plain(self):
         """Converts customised markdown text to plain text.
         """
-        left_col_tags = re.findall(r'\[\w+\]\{', self.text)
-        rm = ['*', '}', '#', *left_col_tags]
+        rm = {r'\[\w+\]\{(.+?)\}': r'\1',  # remove colour tags
+              r'\*+(.+?)\*+': r'\1',  # remove bold/italics '*' but not e.g. bullet points
+              r'^\#+\s+': ''  # remove titles
+              }
 
         text = self.text
-        for x in rm:
-            text = text.replace(x, '')
+        for frm, to in rm.items():
+            text = re.sub(frm, to, text, flags=re.MULTILINE)
 
         return text
 
@@ -135,10 +150,6 @@ class CustomizedSMPTSession(smtplib.SMTP):
     correct password to be saved to the keychain, and a function to send a signed Multipart email with multiple
     attachments.
     """
-
-    # TODO:
-    #  1. somehow add an extra attribute, so you can put providers dict in here as CustomizedSMPTSession.providers
-    #  2. Create a repeat attempt login function for spotlight scrape
 
     def repeat_attempt_login(self, service: str, un: str, pw: str, return_creds: bool = False):
         """Function that tries to log in with provided details, re-trying with new ones over and over until logged in
