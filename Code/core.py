@@ -199,7 +199,7 @@ class CustomizedSMPTSession(smtplib.SMTP):
             logging.basicConfig(filename="../email.log", level=logging.INFO)
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y %H:%M")  # fetch date and time
-            logging.info(f"{dt_string}: Email sent from {from_address} to {to_address} (Subject: '{subject}'.")
+            logging.info(f"{dt_string}: Email sent from {from_address} to {to_address} (Subject: '{subject}').")
 
         return
 
