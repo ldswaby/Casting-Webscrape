@@ -79,15 +79,18 @@ class EmailText():
         raw_txt = self.text
 
         # Mark coloured headings in HTML-compatible format
-        for col_heading in re.findall(r'\[\D+\]\{\#+.+\}', raw_txt):
-            col = re.search(r'\[(\w+)\]', col_heading).group(1)  # extract colour
+        col_head_pattern = r'\[\D+\]\{\#+.+\}'
+        col_pattern = r'\[(\w+)\]'
+        for col_heading in re.findall(col_head_pattern, raw_txt):
+            col = re.search(col_pattern, col_heading).group(1)  # extract colour
             bw_heading = re.split(r'{|}', col_heading)[1]  # extract heading
             raw_txt = raw_txt.replace(col_heading, f'{bw_heading}${col}$')  # replace col_heading with identifier (ARBITRARY $...$)
 
         html_txt = markdown.markdown(raw_txt)  # Convert to HTML
 
         # Translate coloured headings
-        for ch in re.findall(r'\<h\d+\>.+\$.+\$.+\>', html_txt):
+        col_head_html_pattern = r'\<h\d+\>.+\$.+\$.+\>'
+        for ch in re.findall(col_head_html_pattern, html_txt):
             col = re.search(r'\$(\w+)\$', ch).group(1)  # extract colour
             ch_new = re.sub(r'\$\w+\$', '', ch)  # delete bit at end
             # insert colour styling string into brace
@@ -96,12 +99,10 @@ class EmailText():
             html_txt = html_txt.replace(ch, ch_new)
 
         # Convert text body colours: [green]{...} -> <span style="color: green">...</span>
-        for lefttag in re.findall(r'\[\w+\]\{', html_txt):
-            col = re.search(r'\[(\w+)\]', lefttag).group(1)  # extract colour string
-            lefttag_html = f'<span style="color: {col}">'
-            html_txt = html_txt.replace(lefttag, lefttag_html)
-
-        html_txt = html_txt.replace('}', '</span>')
+        col_body_pattern = r'\[\w+\]\{.+?\}'
+        for match in re.findall(col_body_pattern, html_txt):
+            replace = re.sub(r'\[(\w+)\]\{(.+?)\}', r'<span style="color: \1">\2</span>', match)
+            html_txt = html_txt.replace(match, replace)
 
         # Add signature
         if sign:
