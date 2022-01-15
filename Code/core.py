@@ -77,32 +77,21 @@ class EmailText():
         """Converts customised markdown text to html, including an HTML signature if desired.
         """
         raw_txt = self.text
+        # print(raw_txt)
+        # print(html_txt)
 
         # Mark coloured headings in HTML-compatible format
-        col_head_pattern = r'\[\D+\]\{\#+.+\}'
-        col_pattern = r'\[(\w+)\]'
-        for col_heading in re.findall(col_head_pattern, raw_txt):
-            col = re.search(col_pattern, col_heading).group(1)  # extract colour
-            bw_heading = re.split(r'{|}', col_heading)[1]  # extract heading
-            raw_txt = raw_txt.replace(col_heading, f'{bw_heading}${col}$')  # replace col_heading with identifier (ARBITRARY $...$)
+        col_head_pattern = r'\[(\D+)\]\{(\#+.+)\}'
+        raw_txt = re.sub(col_head_pattern, r'\2$\1$', raw_txt)
 
         html_txt = markdown.markdown(raw_txt)  # Convert to HTML
 
-        # Translate coloured headings
-        col_head_html_pattern = r'\<h\d+\>.+\$.+\$.+\>'
-        for ch in re.findall(col_head_html_pattern, html_txt):
-            col = re.search(r'\$(\w+)\$', ch).group(1)  # extract colour
-            ch_new = re.sub(r'\$\w+\$', '', ch)  # delete bit at end
-            # insert colour styling string into brace
-            ins_ix = ch_new.index('>')
-            ch_new = ch_new[:ins_ix] + f' style="color:{col};"' + ch_new[ins_ix:]
-            html_txt = html_txt.replace(ch, ch_new)
+        rm = {r'(\<h\d+)(\>.+)\$(.+)\$(.+\>)': r'\1 style="color:\3;"\2\4',  # Push colour styling strings inside HTML tags
+              r'\[(\w+)\]\{(.+?)\}': r'<span style="color: \1">\2</span>'  # translate coloured body text to HTML
+              }
 
-        # Convert text body colours: [green]{...} -> <span style="color: green">...</span>
-        col_body_pattern = r'\[\w+\]\{.+?\}'
-        for match in re.findall(col_body_pattern, html_txt):
-            replace = re.sub(r'\[(\w+)\]\{(.+?)\}', r'<span style="color: \1">\2</span>', match)
-            html_txt = html_txt.replace(match, replace)
+        for frm, to in rm.items():
+            html_txt = re.sub(frm, to, html_txt, flags=re.MULTILINE)
 
         # Add signature
         if sign:
