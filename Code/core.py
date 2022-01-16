@@ -22,6 +22,7 @@ providers = {"gmail": "smtp.gmail.com",
              "ionos": "smtp.ionos.de",
              "icloud": "smtp.mail.me.com"}
 
+
 ## Functions ##
 def yes_no(prompt):
     """
@@ -76,24 +77,28 @@ class EmailText:
     def convert_to_html(self, sign=False):
         """Converts customised markdown text to html, including an HTML signature if desired.
         """
-        # Mark coloured headings in HTML-compatible format
-        col_head_pattern = r'\[(\D+)\]\{(\#+.+)\}'
-        _raw_txt = re.sub(col_head_pattern, r'\2$\1$', self.text)
+        _raw_txt = self.text
+        # _raw_txt = msg_template
+
+        col_head_pattern = r'\[(\w+)\]\{([\#+|\*][^*]+?)\}'
+        _raw_txt = re.sub(col_head_pattern, r'\2$\1$', _raw_txt)  # Mark coloured headings/bullets in HTML-compatible format
 
         html_txt = markdown.markdown(_raw_txt)  # Convert to HTML
 
-        rm = {r'(\<h\d+)(\>.+)\$(.+)\$(.+\>)': r'\1 style="color:\3;"\2\4',  # Push colour styling strings inside HTML tags
-              r'\[(\w+)\]\{(.+?)\}': r'<span style="color: \1">\2</span>'  # translate coloured body text to HTML
+        rm = {r'(\<\w+)(\>.+)\$(.+)\$(.+\>)': r'\1 style="color:\3;"\2\4',  # Push colour styling strings inside HTML tags for headers
+              r'\[(\w+)\]\{([\s\S]+?)\}': r'<span style="color: \1">\2</span>',  # translate coloured body text to HTML
+              r'(\<span[\S\s]+?)\<\/p\>\n\<p\>(.+?\<\/span\>)': r'\1<br><br>\2'   # account for body text over multiple paragraphs
               }
 
         for frm, to in rm.items():
             html_txt = re.sub(frm, to, html_txt, flags=re.MULTILINE)
 
-        # Add signature
+        # print(html_txt)
+
         if sign:
             with open('signature.txt') as sig:
                 signature = sig.read()
-            html_txt += ('<br><br>' + signature)
+            html_txt += ('<br>' * 2 + signature)  # Add signature
 
         return html_txt
 
@@ -171,8 +176,8 @@ class CustomizedSMPTSession(smtplib.SMTP):
         return
 
     def send_email(self, msg_template: str, subject: str,
-                  from_address: str, to_address: str, names: str,
-                  docs_to_add: list = None, sign: bool = False, ghost: bool = False):
+                   from_address: str, to_address: str, names: str,
+                   docs_to_add: list = None, sign: bool = False, ghost: bool = False):
         """Send email (without logging)
         """
         content = msg_template.replace('$N', names)  # Insert name into email message
@@ -204,8 +209,6 @@ class CustomizedSMPTSession(smtplib.SMTP):
                       docs_to_add: list = None, sign: bool = False):
         """Sends email to self, allowing corrections until user satisfied
         """
-        # Check user is ok with email format
-
         with open(template_path) as email:
             msg_template = email.read()  # Read in template
 
@@ -231,5 +234,3 @@ class CustomizedSMPTSession(smtplib.SMTP):
                       f"Hit ENTER to re-preview when you have saved new contents.")
                 with open(template_path) as email:
                     msg_template = email.read()
-
-
