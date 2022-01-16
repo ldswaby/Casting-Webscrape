@@ -66,7 +66,7 @@ def password_to_keychain(service, un, pw):
     return
 
 
-class EmailText():
+class EmailText:
     """Class that enables conversion of customised input text to either HTML or plain text.
     """
 
@@ -76,15 +76,11 @@ class EmailText():
     def convert_to_html(self, sign=False):
         """Converts customised markdown text to html, including an HTML signature if desired.
         """
-        raw_txt = self.text
-        # print(raw_txt)
-        # print(html_txt)
-
         # Mark coloured headings in HTML-compatible format
         col_head_pattern = r'\[(\D+)\]\{(\#+.+)\}'
-        raw_txt = re.sub(col_head_pattern, r'\2$\1$', raw_txt)
+        _raw_txt = re.sub(col_head_pattern, r'\2$\1$', self.text)
 
-        html_txt = markdown.markdown(raw_txt)  # Convert to HTML
+        html_txt = markdown.markdown(_raw_txt)  # Convert to HTML
 
         rm = {r'(\<h\d+)(\>.+)\$(.+)\$(.+\>)': r'\1 style="color:\3;"\2\4',  # Push colour styling strings inside HTML tags
               r'\[(\w+)\]\{(.+?)\}': r'<span style="color: \1">\2</span>'  # translate coloured body text to HTML
